@@ -1,10 +1,10 @@
 # NodeJS-challenge
 Email auto response app build using node.js
 
-#Vacation Email Auto-Response App
+# Vacation Email Auto-Response App
 This is a Node.js app that auto-responds to incoming emails with a custom vacation message.
 
-#Installation and Setup
+# Installation and Setup
 
 1) Clone the repo to your local machine
 2) Run npm install to install dependencies
