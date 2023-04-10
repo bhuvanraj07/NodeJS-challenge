@@ -6,21 +6,38 @@ const AUTO_REPLY_SUBJECT = 'I am on vacation';
 const AUTO_REPLY_BODY = 'Hello,\n\nI am currently on vacation and will respond to your email when I return.\n\nBest regards,\nYour Name';
 
 async function main() {
+
+  const scriptStartTime = Math.floor(Date.now() / 1000);
+  console.log('Script start time:', scriptStartTime);
   const auth = await authorize();
 
   const gmail = google.gmail({version: 'v1', auth});
 
   const labelId = await getOrCreateLabel(gmail, LABEL_NAME);
+  const repliedSenders = new Set();
 
   setInterval(async () => {
-    const messages = await getUnrepliedMessages(gmail);
+    const messages = await getUnrepliedMessages(gmail, scriptStartTime);
 
     for (const message of messages) {
-      await sendAutoReply(gmail, message, AUTO_REPLY_SUBJECT, AUTO_REPLY_BODY);
-      await applyLabelToMessage(gmail, message.id, labelId);
+      const messageData = await gmail.users.messages.get({
+        userId: 'me',
+        id: message.id,
+      });
+
+      const fromHeader = messageData.data.payload.headers.find(
+        (header) => header.name === 'From'
+      );
+
+      if (fromHeader && !repliedSenders.has(fromHeader.value)) {
+        repliedSenders.add(fromHeader.value);
+        await sendAutoReply(gmail, message, AUTO_REPLY_SUBJECT, AUTO_REPLY_BODY);
+        await applyLabelToMessage(gmail, message.id, labelId);
+      }
     }
   }, getRandomInt(45000, 120000));
 }
+
 
 async function getOrCreateLabel(gmail, labelName) {
   const {data: {labels}} = await gmail.users.labels.list({userId: 'me'});
@@ -43,12 +60,12 @@ async function getOrCreateLabel(gmail, labelName) {
   return newLabel.id;
 }
 
-async function getUnrepliedMessages(gmail) {
+async function getUnrepliedMessages(gmail, startTime ) {
   const {data: {messages}} = await gmail.users.messages.list({
     userId: 'me',
-    q: 'is:unread -label:' + LABEL_NAME
+    q: `is:unread -label:${LABEL_NAME} after:${startTime}`
   });
-
+  console.log('Unreplied messages:', messages);
   return messages || [];
 }
 
